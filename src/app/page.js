@@ -1,95 +1,125 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import "./globals.css";
+import { useEffect, useState } from 'react';
+import sightWords from './sightWords';
 
-export default function Home() {
-  return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+function randomInt(max) {
+  return Math.floor(Math.random() * (max+1));
+}
+
+function arraysEqual(arr1, arr2) { //takes in two arrays
+  if (arr1.length !== arr2.length) return false; //if they are not same length, return false
+  return arr1.every((value, index) => value === arr2[index]); //return true if all of the vales are the same at each index, else false
+}
+
+export default function Game(){
+  const [board, setBoard] = useState([]);
+  const [gridSize, setGridSize] = useState(5);
+  const [correctWord, setCorrectWord] = useState("");
+  const [correctClicked, setCorrectClicked] = useState([]); 
+  const [words, setWords] = useState([]);
+  const [incorrectClicked, setIncorrectClicked] = useState([]);
+
+
+  useEffect(() => {
+    const initialBoard = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+
+    let shuffledWords = [...sightWords];
+    for (let i = shuffledWords.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledWords[i], shuffledWords[j]] = [shuffledWords[j], shuffledWords[i]];
+    }
+    
+    shuffledWords = shuffledWords.slice(0, gridSize*gridSize);
+    setWords(shuffledWords);
+    
+    for(let i = 0; i < gridSize; i++){
+    for(let j = 0; j < gridSize; j++){
+      const index = (i*gridSize) + j;
+      initialBoard[i][j] = shuffledWords[index];
+    }
+    }
+    setBoard(initialBoard);
+    setCorrectWord(shuffledWords[randomInt(gridSize * gridSize)]);
+  }, []);
+  
+
+  function randomNewWord(){
+    let randRow, randCol;
+    do{
+      randRow = randomInt(gridSize -1);
+      randCol = randomInt(gridSize -1);
+    }while(!board[randRow][randCol])
+    return board[randRow][randCol]
+  }
+
+  function handleCellClick(word, row, col){
+    if(!board[row][col] || arraysEqual(incorrectClicked, [row, col]))return;
+    const clickedCell = [row, col];
+    if(word === correctWord){
+      const newCorrectClicked = [...correctClicked, clickedCell];
+      setCorrectClicked(newCorrectClicked);
+
+      const newBoard = [...board];
+      newBoard[row][col] = null;
+      setBoard(newBoard);
+      setIncorrectClicked([]);
+    }else{
+      const newIncorrectClicked = clickedCell;
+      setIncorrectClicked(newIncorrectClicked);
+
+      setTimeout(() => removeIncorrect(), 1500);
+    }
+
+    let newWord;
+    do{
+      newWord = randomNewWord();
+    }while(newWord === correctWord);
+    setCorrectWord(newWord);
+  }
+
+  function removeIncorrect(){
+    setIncorrectClicked([]);
+  }
+
+  return(
+    <div className="game-container">
+      <div className="board">
+      {board.map((row, rowIndex) =>
+        row.map((cell, colIndex) => {
+
+          const cellStyle = {}; //red/blue/white
+          const isCorrect = correctClicked.some(([correctRow, correctCol]) =>
+            correctRow === rowIndex && correctCol === colIndex);
+          const isIncorrect = arraysEqual([rowIndex, colIndex], incorrectClicked);
+
+          if(isCorrect){cellStyle.backgroundColor = 'green';}
+          else if(isIncorrect){cellStyle.backgroundColor = 'red';}
+          else{cellStyle.backgroundColor = 'white'}
+
+          return(
+            <Cell
+            key={`${rowIndex}-${colIndex}`}
+            onTileClick={() => handleCellClick(cell, rowIndex, colIndex)}
+            value={cell}
+            style={cellStyle}
+          />
+          )
+        })
+      )}
       </div>
+      <div>{correctWord}</div>
+    </div>
+    
+  );
+}
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+function Cell({onTileClick, value, style}){
+  return(
+    <button 
+      className="cell"
+      onClick={onTileClick} 
+      style={style}
+    >{value}</button>
   );
 }
