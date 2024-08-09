@@ -2,6 +2,8 @@
 import "./globals.css";
 import { useEffect, useState } from 'react';
 import sightWords from './sightWords';
+import speakText from "./speakText";
+import winPatterns from "./winPatterns";
 
 function randomInt(max) {
   return Math.floor(Math.random() * (max+1));
@@ -14,14 +16,20 @@ function arraysEqual(arr1, arr2) { //takes in two arrays
 
 export default function Game(){
   const [board, setBoard] = useState([]);
-  const [gridSize, setGridSize] = useState(5);
+  const [gridSize, setGridSize] = useState(5); //winning will not occur if this is changed
   const [correctWord, setCorrectWord] = useState("");
   const [correctClicked, setCorrectClicked] = useState([]); 
   const [words, setWords] = useState([]);
   const [incorrectClicked, setIncorrectClicked] = useState([]);
+  const [gameState, setGameState] = useState(1); //0 means stopped, 1 means active
 
 
   useEffect(() => {
+    gameStart();
+  }, []);
+
+  function gameStart(){
+    setGameState(1);
     const initialBoard = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
 
     let shuffledWords = [...sightWords];
@@ -41,7 +49,8 @@ export default function Game(){
     }
     setBoard(initialBoard);
     setCorrectWord(shuffledWords[randomInt(gridSize * gridSize)]);
-  }, []);
+    setCorrectClicked([]);
+  }
   
 
   function randomNewWord(){
@@ -54,6 +63,7 @@ export default function Game(){
   }
 
   function handleCellClick(word, row, col){
+    if(gameState === 0)return;
     if(!board[row][col] || arraysEqual(incorrectClicked, [row, col]))return;
     const clickedCell = [row, col];
     if(word === correctWord){
@@ -64,22 +74,63 @@ export default function Game(){
       newBoard[row][col] = null;
       setBoard(newBoard);
       setIncorrectClicked([]);
+      
+      let newWord;
+      do{
+        newWord = randomNewWord();
+      }while(newWord === correctWord);
+      //check for win
+      if(checkForWin(newCorrectClicked)){
+        setGameState(0);
+        playAudio("You win")
+      }
+      else{
+        setCorrectWord(newWord);
+        playAudio(newWord);
+      }
     }else{
+      playAudio(correctWord);
+
       const newIncorrectClicked = clickedCell;
       setIncorrectClicked(newIncorrectClicked);
 
       setTimeout(() => removeIncorrect(), 1500);
     }
-
-    let newWord;
-    do{
-      newWord = randomNewWord();
-    }while(newWord === correctWord);
-    setCorrectWord(newWord);
   }
 
   function removeIncorrect(){
     setIncorrectClicked([]);
+  }
+
+  function playAudio(word){
+    if(gameState === 1)speakText(word);
+    /* Problems with speaker:
+      "into" is pronounced "inta"
+      "the" sounds like thee (hard e sound)
+      in this word list I pulled, "oneSight", there is "to", "two", and "too"
+      I have no idea why the first voice played is different from the rest
+    */
+  }
+
+  function checkForWin(correctClickedNew){
+    for(let i = 0; i < winPatterns.length; i++){
+      let allCorrect = true;
+      for(let j = 0; j < winPatterns[i].length; j++){
+        let [winRow, winCol] = winPatterns[i][j];
+        
+        let matchFound = correctClickedNew.some(([correctRow, correctCol]) => 
+        correctRow === winRow && correctCol === winCol);
+
+        if(!matchFound){
+          allCorrect = false;
+          break;
+        }
+      }
+      if(allCorrect){
+        return true;
+      }
+    }
+    return false;
   }
 
   return(
@@ -108,7 +159,15 @@ export default function Game(){
         })
       )}
       </div>
-      <div>{correctWord}</div>
+      <button
+        className="audio-button"
+        onClick={() => playAudio(correctWord)}
+        style={{ backgroundImage: `url(/audioButton.png)`, backgroundSize: 'cover' }}  
+      ></button>
+      <button
+        onClick={() => gameStart()}
+      >Restart</button>
+      {(gameState === 0) && <div>You win</div>}
     </div>
     
   );
